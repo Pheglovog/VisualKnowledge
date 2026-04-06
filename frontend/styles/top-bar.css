@@ -1,0 +1,32 @@
+/* Top Bar */
+.top-bar{
+  height:48px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;border-bottom:1px solid var(--border-light);flex-shrink:0;
+  background:var(--bg-primary);
+}
+.top-bar .left{display:flex;align-items:center;gap:10px}
+.top-bar .logo{
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,#d97706,#f59e0b);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:14px;color:#fff;
+}
+.top-bar h1{font-size:15px;font-weight:600;letter-spacing:-0.3px;color:var(--text-primary)}
+.top-bar .model-select{
+  background:var(--bg-tertiary);border:1px solid var(--border-light);
+  color:var(--text-secondary);padding:4px 10px;border-radius:8px;
+  font-size:12px;cursor:pointer;outline:none;
+}
+.top-bar .model-select:hover{border-color:var(--accent)}
+
+.theme-toggle{
+  background:var(--bg-tertiary);border:1px solid var(--border-light);
+  color:var(--text-muted);width:34px;height:34px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all 0.2s;
+}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle .icon-sun{display:none}
+.theme-toggle .icon-moon{display:block}
+[data-theme="light"] .theme-toggle .icon-sun{display:block}
+[data-theme="light"] .theme-toggle .icon-moon{display:none}

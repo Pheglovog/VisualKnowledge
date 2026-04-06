@@ -1,0 +1,37 @@
+/* Input Area */
+.input-area{
+  padding:12px 24px 20px;flex-shrink:0;
+  background:linear-gradient(to top,var(--bg-primary) 60%,transparent);
+}
+.input-wrapper{
+  max-width:768px;margin:0 auto;position:relative;
+  background:var(--bg-input);border:1px solid var(--border-light);
+  border-radius:var(--radius-xl);transition:border-color 0.2s;
+}
+.input-wrapper:focus-within{border-color:var(--accent)}
+.input-wrapper textarea{
+  width:100%;background:none;border:none;color:var(--text-primary);
+  padding:14px 56px 14px 18px;font-size:15px;line-height:1.6;
+  resize:none;outline:none;min-height:24px;max-height:200px;
+  font-family:var(--font-sans);
+}
+.input-wrapper textarea::placeholder{color:var(--text-faint)}
+.send-btn{
+  position:absolute;right:10px;bottom:8px;width:36px;height:36px;
+  border-radius:10px;border:none;cursor:pointer;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;opacity:0.4;
+}
+.send-btn.active{opacity:1}
+.send-btn:hover{transform:scale(1.05);background:var(--accent-hover)}
+.send-btn svg{width:18px;height:18px}
+
+.typing-indicator{display:flex;align-items:center;gap:4px;padding:4px 0}
+.typing-indicator span{
+  width:6px;height:6px;border-radius:50%;background:var(--text-muted);
+  animation:blink 1.4s infinite;
+}
+.typing-indicator span:nth-child(2){animation-delay:0.2s}
+.typing-indicator span:nth-child(3){animation-delay:0.4s}
+@keyframes blink{0%,60%,100%{opacity:0.3}30%{opacity:1}}

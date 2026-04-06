@@ -1,0 +1,7 @@
+/* Reset & Base Layout */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-primary);
+  display:flex;flex-direction:column;
+}
