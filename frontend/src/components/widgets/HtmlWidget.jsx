@@ -6,72 +6,18 @@
  */
 
 import { html } from 'htm/react';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { WidgetContainer } from './WidgetContainer.jsx';
-
-const IFRAME_TIMEOUT_MS = 10000;
 
 export function HtmlWidget({ html: htmlContent, onFullscreen }) {
   const iframeRef = useRef(null);
-  const [status, setStatus] = useState('loading');
-  const timerRef = useRef(null);
-  const stableContentRef = useRef('');
 
-  // 检测内容是否稳定（连续相同内容说明流结束了）
+  // 流式写入：内容到达即写入 iframe
   useEffect(() => {
     if (!htmlContent) return;
-
-    // 内容变化时重置状态
-    if (htmlContent !== stableContentRef.current) {
-      setStatus('loading');
-      if (timerRef.current) clearTimeout(timerRef.current);
-    }
-
-    stableContentRef.current = htmlContent;
-  }, [htmlContent]);
-
-  // iframe 初始化 + 写入内容
-  useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe || !htmlContent) return;
-
-    let settled = false;
-
-    const write = () => {
-      _writeHtml(iframe, htmlContent);
-      setStatus('done');
-      settled = true;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-
-    // 首次加载或 src 变化时等待 load 事件
-    const handler = () => {
-      write();
-    };
-
-    // 超时保护：即使 load 事件没触发也强制写入
-    timerRef.current = setTimeout(() => {
-      if (!settled) {
-        console.warn('[HtmlWidget] iframe load timeout, forcing write');
-        write();
-      }
-    }, IFRAME_TIMEOUT_MS);
-
-    iframe.addEventListener('load', handler);
-
-    // 如果 iframe 已经加载完成，直接写入
-    try {
-      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-        write();
-      }
-    } catch (_) {
-      // cross-origin or not ready yet, wait for load event
-    }
-
-    return () => {
-      iframe.removeEventListener('load', handler);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    if (!iframe) return;
+    _writeHtml(iframe, htmlContent);
   }, [htmlContent]);
 
   const handleFullscreen = () => {
@@ -80,11 +26,13 @@ export function HtmlWidget({ html: htmlContent, onFullscreen }) {
     }
   };
 
+  const hasContent = htmlContent && htmlContent.trim().length > 0;
+
   return html`
     <${WidgetContainer}
       badge="visualize"
-      typeLabel=${status === 'loading' ? '正在生成可视化...' : '交互式可视化'}
-      status=${status}
+      typeLabel=${hasContent ? '交互式可视化' : '正在生成可视化...'}
+      status=${hasContent ? 'done' : 'loading'}
       onZoom=${handleFullscreen}
     >
       <iframe
