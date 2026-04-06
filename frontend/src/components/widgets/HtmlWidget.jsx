@@ -38,7 +38,7 @@ export function HtmlWidget({ html: htmlContent, onFullscreen }) {
       <iframe
         ref=${iframeRef}
         sandbox="allow-scripts allow-same-origin"
-        style=${{ width: '100%', height: '0px', border: 'none', display: 'block', overflow: 'hidden' }}
+        style=${{ width: '100%', height: '0px', border: 'none', display: 'block' }}
       />
     </${WidgetContainer}>
   `;
@@ -52,19 +52,33 @@ function _writeHtml(iframe, content) {
     doc.write(content);
     doc.close();
 
-    // 紧凑高度：移除 body 默认 margin，只保留最小 padding
-    try {
-      doc.body.style.margin = '0';
-      doc.body.style.padding = '0';
-      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 0);
-      // 只在内容更高时才增大，不缩小（避免抖动）
-      const current = parseInt(iframe.style.height) || 0;
-      const target = Math.min(h + 4, 1200);
-      if (target > current || target < current - 20) {
-        iframe.style.height = target + 'px';
-      }
-    } catch (_) {}
+    // 精确测量：只读 body.scrollHeight（documentElement 会返回视口最小高度）
+    _fitHeight(iframe);
+
+    // 延迟再测一次，捕获 JS 动态生成的内容（如 SVG）
+    setTimeout(() => _fitHeight(iframe), 100);
   } catch (e) {
     console.warn('[HtmlWidget] write failed:', e);
   }
+}
+
+function _fitHeight(iframe) {
+  try {
+    const doc = iframe?.contentDocument;
+    if (!doc || !doc.body || !doc.body.parentNode) return;
+
+    // 清除默认 margin/padding
+    doc.body.style.margin = '0';
+    doc.body.style.padding = '0';
+
+    // 只用 body.scrollHeight，不用 documentElement（它含视口最小高度）
+    const h = doc.body.scrollHeight || 0;
+    const current = parseInt(iframe.style.height) || 0;
+    const target = Math.min(h, 1200);
+
+    // 允许增长；允许缩小超过 20px 的差距
+    if (target > current || target < current - 20) {
+      iframe.style.height = target + 'px';
+    }
+  } catch (_) {}
 }
