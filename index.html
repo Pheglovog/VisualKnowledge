@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Chat</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#1c1917;
+  --bg-secondary:#1c1917;
+  --bg-tertiary:#292524;
+  --bg-input:#292524;
+  --bg-hover:#3f3a36;
+  --bg-user-msg:#2a2520;
+  --text-primary:#fafaf9;
+  --text-secondary:#d6d3d1;
+  --text-muted:#a8a29e;
+  --text-faint:#78716c;
+  --accent:#d97706;
+  --accent-soft:#d9770620;
+  --accent-hover:#f59e0b;
+  --border:#ffffff0a;
+  --border-light:#ffffff12;
+  --border-medium:#ffffff1a;
+  --radius:12px;
+  --radius-lg:16px;
+  --radius-xl:20px;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono',CaskaydiaCove Nerd Font,'Cascadia Code',Consolas,monospace;
+  --color-amber:#f59e0b;
+  --color-blue:#60a5fa;
+  --color-purple:#a78bfa;
+  --color-green:#4ade80;
+  --color-rose:#fb7185;
+  --color-teal:#2dd4bf;
+  --color-orange:#fb923c;
+  --color-yellow:#fbbf24;
+  --code-bg:#0c0a09;
+  --code-border:#ffffff12;
+  --blockquote-bg:#ffffff03;
+  --table-header-bg:#292524;
+  --table-even-bg:#ffffff03;
+  --widget-bg:#1c1917;
+  --widget-header-bg:#292524;
+}
+[data-theme="light"]{
+  --bg-primary:#fafaf9;
+  --bg-secondary:#fafaf9;
+  --bg-tertiary:#f5f5f4;
+  --bg-input:#f5f5f4;
+  --bg-hover:#e7e5e4;
+  --bg-user-msg:#f0ede8;
+  --text-primary:#1c1917;
+  --text-secondary:#44403c;
+  --text-muted:#78716c;
+  --text-faint:#a8a29e;
+  --accent:#d97706;
+  --accent-soft:#d9770615;
+  --accent-hover:#b45309;
+  --border:#00000008;
+  --border-light:#0000000d;
+  --border-medium:#00000015;
+  --shadow:0 4px 24px rgba(0,0,0,0.08);
+  --color-amber:#d97706;
+  --color-blue:#2563eb;
+  --color-purple:#7c3aed;
+  --color-green:#16a34a;
+  --color-rose:#e11d48;
+  --color-teal:#0d9488;
+  --color-orange:#ea580c;
+  --color-yellow:#ca8a04;
+  --code-bg:#f5f5f4;
+  --code-border:#e7e5e4;
+  --blockquote-bg:#00000003;
+  --table-header-bg:#f5f5f4;
+  --table-even-bg:#00000002;
+  --widget-bg:#ffffff;
+  --widget-header-bg:#f5f5f4;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-primary);
+  display:flex;flex-direction:column;
+}
+
+.top-bar{
+  height:48px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;border-bottom:1px solid var(--border-light);flex-shrink:0;
+  background:var(--bg-primary);
+}
+.top-bar .left{display:flex;align-items:center;gap:10px}
+.top-bar .logo{
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,#d97706,#f59e0b);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:14px;color:#fff;
+}
+.top-bar h1{font-size:15px;font-weight:600;letter-spacing:-0.3px;color:var(--text-primary)}
+.top-bar .model-select{
+  background:var(--bg-tertiary);border:1px solid var(--border-light);
+  color:var(--text-secondary);padding:4px 10px;border-radius:8px;
+  font-size:12px;cursor:pointer;outline:none;
+}
+.top-bar .model-select:hover{border-color:var(--accent)}
+
+.chat-area{
+  flex:1;overflow-y:auto;padding:0;display:flex;flex-direction:column;
+  scroll-behavior:smooth;
+}
+.chat-area::-webkit-scrollbar{width:6px}
+.chat-area::-webkit-scrollbar-track{background:transparent}
+.chat-area::-webkit-scrollbar-thumb{background:#ffffff15;border-radius:3px}
+.chat-area::-webkit-scrollbar-thumb:hover{background:#ffffff25}
+
+.messages{max-width:768px;width:100%;margin:0 auto;padding:16px 24px;flex:1}
+
+.welcome{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:16px;opacity:0.7;text-align:center;padding:40px;
+}
+.welcome .icon{
+  width:64px;height:64px;border-radius:20px;
+  background:linear-gradient(135deg,#d97706,#f59e0b);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;color:#fff;
+}
+.welcome h2{font-size:22px;font-weight:600;color:var(--text-primary)}
+.welcome p{color:var(--text-muted);font-size:14px;line-height:1.6;max-width:400px}
+
+.message{margin-bottom:24px;animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.message.user .bubble{
+  background:var(--bg-user-msg);border:1px solid var(--border-light);
+  border-radius:var(--radius-xl) var(--radius-xl) 4px var(--radius-xl);
+  padding:12px 18px;margin-left:48px;max-width:85%;
+  font-size:15px;line-height:1.7;white-space:pre-wrap;word-break:break-word;
+  color:var(--text-primary);
+}
+.message.assistant .avatar{
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,#d97706,#f59e0b);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:12px;color:#fff;margin-bottom:8px;
+}
+.message.assistant .content{
+  font-size:15px;line-height:1.8;color:var(--text-primary);
+  padding-left:2px;
+}
+.message.assistant .content p{margin-bottom:12px}
+.message.assistant .content p:last-child{margin-bottom:0}
+.message.assistant .content strong{color:var(--text-primary);font-weight:600}
+.message.assistant .content em{color:var(--text-secondary);font-style:italic}
+.message.assistant .content code{
+  background:var(--blockquote-bg);border:1px solid var(--border-light);
+  padding:1px 6px;border-radius:4px;font-size:13px;
+  font-family:var(--font-mono);color:var(--color-yellow);
+}
+.message.assistant .content pre{
+  background:var(--code-bg);border:1px solid var(--code-border);
+  border-radius:var(--radius);padding:14px 18px;margin:12px 0;
+  overflow-x:auto;
+}
+.message.assistant .content pre code{
+  background:none;border:none;padding:0;color:var(--text-secondary);font-size:13px;
+}
+.message.assistant .content ul,.message.assistant .content ol{
+  margin:8px 0 8px 24px;
+}
+.message.assistant .content li{margin-bottom:4px;line-height:1.7}
+.message.assistant .content h1,.message.assistant .content h2,.message.assistant .content h3{
+  color:var(--text-primary);font-weight:700;margin:20px 0 8px;
+}
+.message.assistant .content h2{font-size:17px}
+.message.assistant .content h3{font-size:16px}
+.message.assistant .content hr{
+  border:none;border-top:1px solid var(--border-light);margin:16px 0;
+}
+.message.assistant .content blockquote{
+  border-left:3px solid var(--accent);padding:4px 14px;margin:10px 0;
+  color:var(--text-muted);background:var(--blockquote-bg);border-radius:0 8px 8px 0;
+}
+.message.assistant .content table{
+  border-collapse:collapse;margin:12px 0;width:100%;
+}
+.message.assistant .content th,.message.assistant .content td{
+  border:1px solid var(--border-light);padding:8px 12px;text-align:left;
+}
+.message.assistant .content th{
+  background:var(--table-header-bg);font-weight:600;color:var(--text-primary);
+}
+.message.assistant .content tr:nth-child(even){background:var(--table-even-bg)}
+.message.assistant .content a{color:var(--color-blue);text-decoration:none}
+.message.assistant .content a:hover{text-decoration:underline}
+.message.assistant .content img{max-width:100%;border-radius:var(--radius)}
+/* KaTeX 数学公式主题适配 */
+.message.assistant .content .katex-display{margin:14px 0;overflow-x:auto}
+.message.assistant .content .katex{color:var(--text-primary);font-size:1em}
+[data-theme="light"] .message.assistant .content .katex{color:#1c1917}
+
+.widget-container{
+  margin:14px 0;border:1px solid var(--border-light);
+  border-radius:var(--radius-lg);overflow:hidden;
+  background:var(--widget-bg);
+}
+.widget-container .widget-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  background:var(--widget-header-bg);
+}
+.widget-container .widget-header .left{display:flex;align-items:center;gap:8px}
+.widget-container .widget-header .badge{
+  background:var(--accent-soft);color:var(--accent);
+  padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;
+}
+.widget-container .widget-header .widget-type{font-size:13px;color:var(--text-muted)}
+.widget-container .widget-header .btn{
+  background:none;border:1px solid var(--border-light);color:var(--text-muted);
+  padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;
+  transition:all 0.2s;
+}
+.widget-container .widget-header .btn:hover{border-color:var(--accent);color:var(--accent)}
+.widget-container .widget-body{
+  padding:0;display:flex;justify-content:center;overflow:auto;
+  min-height:100px;
+}
+.widget-container .widget-body svg{max-width:100%;height:auto}
+.widget-container .widget-loading{
+  padding:30px;display:flex;align-items:center;justify-content:center;gap:10px;
+  color:var(--text-muted);font-size:13px;
+}
+.widget-container .widget-loading .spinner{
+  width:18px;height:18px;border:2px solid var(--border-light);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.widget-error{
+  padding:16px;color:var(--color-rose);font-size:13px;
+  background:var(--accent-soft);border-radius:var(--radius);margin:10px;
+}
+
+.input-area{
+  padding:12px 24px 20px;flex-shrink:0;
+  background:linear-gradient(to top,var(--bg-primary) 60%,transparent);
+}
+.input-wrapper{
+  max-width:768px;margin:0 auto;position:relative;
+  background:var(--bg-input);border:1px solid var(--border-light);
+  border-radius:var(--radius-xl);transition:border-color 0.2s;
+}
+.input-wrapper:focus-within{border-color:var(--accent)}
+.input-wrapper textarea{
+  width:100%;background:none;border:none;color:var(--text-primary);
+  padding:14px 56px 14px 18px;font-size:15px;line-height:1.6;
+  resize:none;outline:none;min-height:24px;max-height:200px;
+  font-family:var(--font-sans);
+}
+.input-wrapper textarea::placeholder{color:var(--text-faint)}
+.send-btn{
+  position:absolute;right:10px;bottom:8px;width:36px;height:36px;
+  border-radius:10px;border:none;cursor:pointer;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;opacity:0.4;
+}
+.send-btn.active{opacity:1}
+.send-btn:hover{transform:scale(1.05);background:var(--accent-hover)}
+.send-btn svg{width:18px;height:18px}
+
+.theme-toggle{
+  background:var(--bg-tertiary);border:1px solid var(--border-light);
+  color:var(--text-muted);width:34px;height:34px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all 0.2s;
+}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle .icon-sun{display:none}
+.theme-toggle .icon-moon{display:block}
+[data-theme="light"] .theme-toggle .icon-sun{display:block}
+[data-theme="light"] .theme-toggle .icon-moon{display:none}
+
+.typing-indicator{display:flex;align-items:center;gap:4px;padding:4px 0}
+.typing-indicator span{
+  width:6px;height:6px;border-radius:50%;background:var(--text-muted);
+  animation:blink 1.4s infinite;
+}
+.typing-indicator span:nth-child(2){animation-delay:0.2s}
+.typing-indicator span:nth-child(3){animation-delay:0.4s}
+@keyframes blink{0%,60%,100%{opacity:0.3}30%{opacity:1}}
+
+.widget-fullscreen-overlay{
+  position:fixed;inset:0;z-index:1000;background:var(--bg-primary);
+  display:none;flex-direction:column;
+}
+.widget-fullscreen-overlay.active{display:flex}
+.widget-fullscreen-overlay .fs-header{
+  height:48px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;border-bottom:1px solid var(--border-light);flex-shrink:0;
+  background:var(--bg-primary);
+}
+.widget-fullscreen-overlay .fs-header .left{display:flex;align-items:center;gap:8px}
+.widget-fullscreen-overlay .fs-close{
+  background:none;border:1px solid var(--border-light);color:var(--text-muted);
+  padding:4px 14px;border-radius:8px;font-size:13px;cursor:pointer;
+}
+.widget-fullscreen-overlay .fs-close:hover{border-color:var(--accent);color:var(--accent)}
+.widget-fullscreen-overlay iframe{
+  flex:1;width:100%;border:none;
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="left">
+    <div class="logo">C</div>
+    <h1>Claude Chat</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button id="themeToggle" class="theme-toggle" title="切换主题">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <select class="model-select" id="modelSelect">
+      <option value="">加载中...</option>
+    </select>
+  </div>
+</div>
+
+<div class="chat-area" id="chatArea">
+  <div class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <div class="icon">C</div>
+      <h2>有什么可以帮你的？</h2>
+      <p>支持交互式可视化 · HTML/Mermaid 图表 · 流式响应</p>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-wrapper">
+    <textarea id="userInput" rows="1" placeholder="输入消息...  Shift+Enter 换行"></textarea>
+    <button class="send-btn" id="sendBtn" title="发送">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div class="widget-fullscreen-overlay" id="fullscreenOverlay">
+  <div class="fs-header">
+    <div class="left">
+      <span style="color:var(--accent);font-size:13px;font-weight:600">visualize</span>
+      <span style="color:var(--text-muted);font-size:12px">交互式可视化</span>
+    </div>
+    <button class="fs-close" id="fsClose">✕ 关闭</button>
+  </div>
+  <iframe id="fsIframe" sandbox="allow-scripts allow-same-origin"></iframe>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- KaTeX 数学公式渲染 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+const darkConfig = {
+  startOnLoad: false,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#78350f',
+    primaryTextColor: '#fafaf9',
+    primaryBorderColor: '#d97706',
+    lineColor: '#60a5fa',
+    secondaryColor: '#292524',
+    tertiaryColor: '#1c1917',
+    fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif',
+    fontSize: '14px',
+    nodeTextColor: '#fafaf9',
+  },
+  flowchart: { htmlLabels: true, curve: 'basis' },
+  sequence: { mirrorActors: false },
+  mindmap: { padding: 20 },
+};
+
+const lightConfig = {
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    primaryColor: '#fef3c7',
+    primaryTextColor: '#1c1917',
+    primaryBorderColor: '#d97706',
+    lineColor: '#2563eb',
+    secondaryColor: '#f5f5f4',
+    tertiaryColor: '#fafaf9',
+    fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif',
+    fontSize: '14px',
+    nodeTextColor: '#1c1917',
+  },
+  flowchart: { htmlLabels: true, curve: 'basis' },
+  sequence: { mirrorActors: false },
+  mindmap: { padding: 20 },
+};
+
+mermaid.initialize(darkConfig);
+
+window.mermaidRender = async (code) => {
+  const id = 'm_' + Math.random().toString(36).substr(2, 9);
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  try {
+    // Re-initialize with correct theme before each render
+    mermaid.initialize(isLight ? lightConfig : darkConfig);
+    const { svg } = await mermaid.render(id, code);
+    return { svg, error: null };
+  } catch (e) {
+    return { svg: null, error: e.message || String(e) };
+  }
+};
+</script>
+<script>
+const chatArea = document.getElementById('chatArea');
+const messagesEl = document.getElementById('messages');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const modelSelect = document.getElementById('modelSelect');
+const welcome = document.getElementById('welcome');
+const fullscreenOverlay = document.getElementById('fullscreenOverlay');
+const fsIframe = document.getElementById('fsIframe');
+const fsClose = document.getElementById('fsClose');
+
+let conversationHistory = [];
+let isStreaming = false;
+
+marked.setOptions({ breaks: true, gfm: true });
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderMarkdown(text) {
+  let cleaned = text;
+  // 移除可视化标签
+  cleaned = cleaned.replace(/^\[VISUALIZE:\s*(yes|no)\]\s*\n?/m, '');
+  // 移除可视化代码块（由独立渲染器处理）
+  cleaned = cleaned.replace(/```mermaid\s*\n[\s\S]*?```/g, '');
+  cleaned = cleaned.replace(/```mermaid[\s\S]*$/g, '');
+  cleaned = cleaned.replace(/```html\s*\n[\s\S]*?```/g, '');
+  cleaned = cleaned.replace(/```html[\s\S]*$/g, '');
+  cleaned = cleaned.replace(/```svg\s*\n[\s\S]*?```/g, '');
+  cleaned = cleaned.replace(/```svg[\s\S]*$/g, '');
+  // 移除 visualization placeholder 注释（用字符串拼接避免 HTML 注释解析冲突）
+  const phRegex = new RegExp('<' + '!-- visualization placeholder -->\\s*', 'g');
+  cleaned = cleaned.replace(phRegex, '');
+  try {
+    const html = marked.parse(cleaned);
+    // 渲染数学公式（KaTeX）
+    return renderMath(html);
+  } catch (e) {
+    return escapeHtml(cleaned);
+  }
+}
+
+function renderMath(html) {
+  if (typeof katex === 'undefined') return html;
+  try {
+    // 先处理块级公式 $$...$$，再处理行内公式 $...$
+    let result = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => {
+      try { return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }); }
+      catch { return `$$${tex}$$`; }
+    });
+    result = result.replace(/\$([^\$\n]+?)\$/g, (_, tex) => {
+      try { return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }); }
+      catch { return `$${tex}$`; }
+    });
+    return result;
+  } catch (e) {
+    return html;
+  }
+}
+
+function scrollToBottom() {
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function addMessage(role, content) {
+  if (welcome) welcome.style.display = 'none';
+  const msgEl = document.createElement('div');
+  msgEl.className = `message ${role}`;
+  if (role === 'user') {
+    msgEl.innerHTML = `<div class="bubble">${escapeHtml(content)}</div>`;
+  } else {
+    msgEl.innerHTML = `<div class="avatar">C</div><div class="content"></div>`;
+  }
+  messagesEl.appendChild(msgEl);
+  scrollToBottom();
+  return msgEl;
+}
+
+function createMermaidContainer(parentEl) {
+  const container = document.createElement('div');
+  container.className = 'widget-container';
+  const uid = 'mc_' + Math.random().toString(36).substr(2, 8);
+  container.innerHTML = `
+    <div class="widget-header">
+      <div class="left">
+        <span class="badge">diagram</span>
+        <span class="widget-type">正在渲染图表...</span>
+      </div>
+      <button class="btn" id="zoom-${uid}">⛶ 放大</button>
+    </div>
+    <div class="widget-body" id="body-${uid}">
+      <div class="widget-loading"><div class="spinner"></div> 渲染中...</div>
+    </div>
+  `;
+  parentEl.appendChild(container);
+  return { container, bodyId: 'body-' + uid, uid };
+}
+
+function getChartType(code) {
+  const first = code.trim().split('\n')[0].trim().toLowerCase();
+  if (first.startsWith('graph') || first.startsWith('flowchart')) return '流程图';
+  if (first.startsWith('sequence')) return '序列图';
+  if (first.startsWith('class')) return '类图';
+  if (first.startsWith('state')) return '状态图';
+  if (first.startsWith('er')) return 'ER图';
+  if (first.startsWith('gantt')) return '甘特图';
+  if (first.startsWith('pie')) return '饼图';
+  if (first.startsWith('journey')) return '用户旅程图';
+  if (first.startsWith('mindmap')) return '思维导图';
+  if (first.startsWith('timeline')) return '时间线';
+  if (first.startsWith('gitgraph')) return 'Git图';
+  if (first.startsWith('sankey')) return '桑基图';
+  if (first.startsWith('xychart')) return 'XY图表';
+  if (first.startsWith('block')) return '块图';
+  return '图表';
+}
+
+async function renderMermaidChart(chartInfo, code) {
+  const body = document.getElementById(chartInfo.bodyId);
+  const typeLabel = chartInfo.container.querySelector('.widget-type');
+  const chartType = getChartType(code);
+  if (typeLabel) typeLabel.textContent = chartType;
+
+  if (!window.mermaidRender) {
+    body.innerHTML = '<div class="widget-error">Mermaid 库加载中，请稍后刷新重试</div>';
+    return;
+  }
+
+  const result = await window.mermaidRender(code);
+  if (result.error) {
+    body.innerHTML = `<div class="widget-error">图表渲染失败: ${escapeHtml(result.error)}</div>`;
+    return;
+  }
+  body.innerHTML = result.svg;
+
+  const svg = body.querySelector('svg');
+  if (svg) {
+    svg.style.maxWidth = '100%';
+    svg.style.height = 'auto';
+  }
+
+  const zoomBtn = document.getElementById('zoom-' + chartInfo.uid);
+  if (zoomBtn) {
+    zoomBtn.addEventListener('click', () => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:var(--bg-primary);display:flex;flex-direction:column;';
+      overlay.innerHTML = `
+        <div style="height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border-light);flex-shrink:0;background:var(--bg-primary)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:var(--accent);font-size:13px;font-weight:600">diagram</span>
+            <span style="color:var(--text-muted);font-size:12px">${chartType}</span>
+          </div>
+          <button style="background:none;border:1px solid var(--border-light);color:var(--text-muted);padding:4px 14px;border-radius:8px;font-size:13px;cursor:pointer" onclick="this.closest('div[style]').remove()">✕ 关闭</button>
+        </div>
+        <div style="flex:1;overflow:auto;padding:24px;display:flex;justify-content:center;align-items:flex-start;background:var(--bg-primary)">
+          ${result.svg}
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    });
+  }
+}
+
+class LiveSvgWidget {
+  constructor(parentEl) {
+    this.el = document.createElement('div');
+    this.el.className = 'widget-container';
+    this.uid = 'svg_' + Math.random().toString(36).substr(2, 6);
+    this.el.innerHTML = `
+      <div class="widget-header">
+        <div class="left">
+          <span class="badge">visualize</span>
+          <span class="widget-type">正在生成可视化...</span>
+        </div>
+        <button class="btn" id="svg-zoom-${this.uid}">⛶ 放大</button>
+      </div>
+      <div class="widget-body" id="svg-body-${this.uid}" style="padding:12px;display:flex;justify-content:center;overflow:auto;min-height:80px">
+        <div class="widget-loading"><div class="spinner"></div> 渲染中...</div>
+      </div>
+    `;
+    parentEl.appendChild(this.el);
+    this.body = document.getElementById(`svg-body-${this.uid}`);
+    this.headerLabel = this.el.querySelector('.widget-type');
+    this.svgBuffer = '';
+    this.renderTimer = null;
+    this.lastRenderLen = 0;
+    this.finalSvg = '';
+
+    document.getElementById(`svg-zoom-${this.uid}`).addEventListener('click', () => {
+      this.openZoom();
+    });
+  }
+
+  appendChunk(chunk) {
+    this.svgBuffer += chunk;
+    if (this.svgBuffer.length - this.lastRenderLen > 200) {
+      this._render();
+    } else {
+      this._scheduleRender();
+    }
+  }
+
+  _scheduleRender() {
+    if (this.renderTimer) return;
+    this.renderTimer = setTimeout(() => {
+      this.renderTimer = null;
+      this._render();
+    }, 100);
+  }
+
+  _render() {
+    this.lastRenderLen = this.svgBuffer.length;
+    const svg = this._extractSvg(this.svgBuffer);
+    if (svg) {
+      this.body.innerHTML = svg;
+      this._styleSvg();
+    }
+  }
+
+  _extractSvg(text) {
+    const start = text.indexOf('<svg');
+    if (start === -1) return null;
+    let depth = 0;
+    let i = start;
+    for (; i < text.length; i++) {
+      if (text.substring(i, i + 4) === '<svg') depth++;
+      if (text.substring(i, i + 6) === '</svg>') { depth--; if (depth === 0) { i += 6; break; } }
+    }
+    if (depth !== 0) return text.substring(start);
+    return text.substring(start, i);
+  }
+
+  _styleSvg() {
+    const svg = this.body.querySelector('svg');
+    if (!svg) return;
+    svg.style.maxWidth = '100%';
+    svg.style.height = 'auto';
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+  }
+
+  finalize() {
+    if (this.renderTimer) { clearTimeout(this.renderTimer); this.renderTimer = null; }
+    if (this.headerLabel) this.headerLabel.textContent = '交互式可视化';
+    const svg = this._extractSvg(this.svgBuffer);
+    if (svg) {
+      this.body.innerHTML = svg;
+      this._styleSvg();
+      this.finalSvg = svg;
+    } else {
+      this.body.innerHTML = `<div class="widget-error">SVG 内容解析失败</div>`;
+    }
+  }
+
+  openZoom() {
+    const svg = this.finalSvg || this._extractSvg(this.svgBuffer);
+    if (!svg) return;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:var(--bg-primary);display:flex;flex-direction:column;';
+    overlay.innerHTML = `
+      <div style="height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border-light);flex-shrink:0;background:var(--bg-primary)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="color:var(--accent);font-size:13px;font-weight:600">visualize</span>
+          <span style="color:var(--text-muted);font-size:12px">SVG 交互式可视化</span>
+        </div>
+        <button style="background:none;border:1px solid var(--border-light);color:var(--text-muted);padding:4px 14px;border-radius:8px;font-size:13px;cursor:pointer" onclick="this.closest('div[style]').remove()">✕ 关闭</button>
+      </div>
+      <div style="flex:1;overflow:auto;padding:24px;display:flex;justify-content:center;align-items:flex-start;background:var(--bg-primary)">
+        ${svg}
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+}
+
+class LiveHtmlWidget {
+  constructor(parentEl) {
+    this.htmlBuffer = '';
+    this.el = document.createElement('div');
+    this.el.className = 'widget-container';
+    this.widgetId = 'hw_' + Math.random().toString(36).substr(2, 6);
+    this.el.innerHTML = `
+      <div class="widget-header">
+        <div class="left">
+          <span class="badge">visualize</span>
+          <span class="widget-type">正在生成可视化...</span>
+        </div>
+        <button class="btn" id="fs-btn-${this.widgetId}">⛶ 全屏</button>
+      </div>
+      <iframe id="iframe-${this.widgetId}" sandbox="allow-scripts allow-same-origin" style="width:100%;height:460px;border:none;display:block"></iframe>
+    `;
+    parentEl.appendChild(this.el);
+
+    this.iframe = document.getElementById(`iframe-${this.widgetId}`);
+    this.headerLabel = this.el.querySelector('.widget-type');
+    this.iframeReady = false;
+    this.lastWriteLen = 0;
+    this.fullscreenHtml = '';
+    this.renderTimer = null;
+
+    this.iframe.addEventListener('load', () => {
+      this.iframeReady = true;
+      if (this.htmlBuffer) this._writeHtml(this.htmlBuffer);
+    });
+    this.iframe.src = 'about:blank';
+
+    document.getElementById(`fs-btn-${this.widgetId}`).addEventListener('click', () => {
+      this.openFullscreen();
+    });
+  }
+
+  _writeHtml(html) {
+    try {
+      const doc = this.iframe.contentDocument;
+      if (!doc) return;
+      doc.open(); doc.write(html); doc.close();
+    } catch (e) {}
+  }
+
+  _scheduleRender() {
+    if (this.renderTimer) return;
+    this.renderTimer = setTimeout(() => {
+      this.renderTimer = null;
+      if (this.iframeReady && this.htmlBuffer) {
+        this.lastWriteLen = this.htmlBuffer.length;
+        this._writeHtml(this.htmlBuffer);
+      }
+    }, 80);
+  }
+
+  appendChunk(chunk) {
+    this.htmlBuffer += chunk;
+    if (this.htmlBuffer.length - this.lastWriteLen > 300) {
+      if (this.iframeReady) {
+        this.lastWriteLen = this.htmlBuffer.length;
+        this._writeHtml(this.htmlBuffer);
+      }
+    } else {
+      this._scheduleRender();
+    }
+  }
+
+  finalize() {
+    if (this.renderTimer) {
+      clearTimeout(this.renderTimer);
+      this.renderTimer = null;
+    }
+    if (this.headerLabel) this.headerLabel.textContent = '交互式可视化';
+    if (this.iframeReady) this._writeHtml(this.htmlBuffer);
+    this.fullscreenHtml = this.htmlBuffer;
+    try {
+      const doc = this.iframe.contentDocument;
+      if (doc && doc.body) {
+        const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 300);
+        this.iframe.style.height = Math.min(h + 20, 1200) + 'px';
+      }
+    } catch(e) {}
+  }
+
+  openFullscreen() {
+    const html = this.fullscreenHtml || this.htmlBuffer;
+    if (!html) return;
+    fsIframe.src = 'about:blank';
+    fullscreenOverlay.classList.add('active');
+    const handler = () => {
+      fsIframe.removeEventListener('load', handler);
+      try { fsIframe.contentDocument.open(); fsIframe.contentDocument.write(html); fsIframe.contentDocument.close(); } catch(e) {}
+    };
+    fsIframe.addEventListener('load', handler);
+  }
+}
+
+fsClose.addEventListener('click', () => {
+  fullscreenOverlay.classList.remove('active');
+  fsIframe.src = 'about:blank';
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { fullscreenOverlay.classList.remove('active'); fsIframe.src = 'about:blank'; }
+});
+
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text || isStreaming) return;
+
+  isStreaming = true;
+  sendBtn.classList.remove('active');
+  userInput.value = '';
+  autoResize();
+
+  addMessage('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+
+  const assistantEl = addMessage('assistant', '');
+  const contentEl = assistantEl.querySelector('.content');
+  const textPart = document.createElement('div');
+  textPart.className = 'text-part';
+  contentEl.appendChild(textPart);
+  let fullText = '';
+
+  const typing = document.createElement('div');
+  typing.className = 'typing-indicator';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  textPart.appendChild(typing);
+
+  let blockState = 'text';
+  let blockLang = '';
+  let blockContent = '';
+  let tickCount = 0;
+  let currentChart = null;
+  let currentHtmlWidget = null;
+  let currentSvgWidget = null;
+
+  function detectBlockStart(chunk) {
+    const lookback = fullText.substring(Math.max(0, fullText.length - 30));
+    for (const lang of ['mermaid', 'html', 'svg']) {
+      const marker = '```' + lang;
+      const idx = lookback.lastIndexOf(marker);
+      if (idx !== -1) {
+        const absIdx = fullText.length - lookback.length + idx;
+        return { lang, absIdx };
+      }
+    }
+    return null;
+  }
+
+  function processNewText(newChunk) {
+    // 过滤掉 [VISUALIZE: yes/no] 标签，不显示给用户
+    newChunk = newChunk.replace(/^\[VISUALIZE:\s*(yes|no)\]\s*\n?/m, '');
+    fullText += newChunk;
+
+    if (blockState === 'text') {
+      const hit = detectBlockStart(newChunk);
+      if (hit) {
+        blockState = 'codeblock';
+        blockLang = hit.lang;
+        blockContent = '';
+        tickCount = 0;
+
+        const before = fullText.substring(0, hit.absIdx);
+        if (typing.parentNode) typing.remove();
+        textPart.innerHTML = renderMarkdown(before);
+
+        if (blockLang === 'mermaid') {
+          currentChart = createMermaidContainer(contentEl);
+          scrollToBottom();
+        } else if (blockLang === 'html') {
+          currentHtmlWidget = new LiveHtmlWidget(contentEl);
+          scrollToBottom();
+        } else if (blockLang === 'svg') {
+          currentSvgWidget = new LiveSvgWidget(contentEl);
+          scrollToBottom();
+        }
+        return;
+      }
+
+      if (typing.parentNode) typing.remove();
+      textPart.innerHTML = renderMarkdown(fullText);
+      scrollToBottom();
+      return;
+    }
+
+    for (let i = 0; i < newChunk.length; i++) {
+      const ch = newChunk[i];
+      if (ch === '`') {
+        tickCount++;
+      } else {
+        if (tickCount >= 3) {
+          blockState = 'text';
+          tickCount = 0;
+
+          if (blockLang === 'mermaid' && currentChart) {
+            const chart = currentChart;
+            currentChart = null;
+            renderMermaidChart(chart, blockContent);
+          } else if (blockLang === 'html' && currentHtmlWidget) {
+            currentHtmlWidget.finalize();
+            currentHtmlWidget = null;
+          } else if (blockLang === 'svg' && currentSvgWidget) {
+            currentSvgWidget.finalize();
+            currentSvgWidget = null;
+          }
+          blockContent = '';
+          blockLang = '';
+          continue;
+        }
+        if (tickCount > 0) {
+          blockContent += '`'.repeat(tickCount);
+          tickCount = 0;
+        }
+        blockContent += ch;
+
+        if (blockLang === 'html' && currentHtmlWidget) {
+          currentHtmlWidget.appendChunk(ch);
+        } else if (blockLang === 'svg' && currentSvgWidget) {
+          currentSvgWidget.appendChunk(ch);
+        }
+      }
+    }
+    if (blockLang === 'html' && currentHtmlWidget) {
+      scrollToBottom();
+    } else if (blockLang === 'svg' && currentSvgWidget) {
+      scrollToBottom();
+    }
+  }
+
+  try {
+    const model = modelSelect.value;
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: conversationHistory, model: model || undefined }),
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') continue;
+        let event;
+        try { event = JSON.parse(data); } catch { continue; }
+        if (event.type === 'text') processNewText(event.content);
+        else if (event.type === 'error') {
+          if (typing.parentNode) typing.remove();
+          contentEl.innerHTML = `<div class="widget-error">API 错误: ${escapeHtml(event.message)}</div>`;
+        }
+      }
+    }
+
+    if (blockState === 'codeblock') {
+      if (blockLang === 'mermaid' && currentChart) {
+        const chart = currentChart;
+        currentChart = null;
+        renderMermaidChart(chart, blockContent);
+      } else if (blockLang === 'html' && currentHtmlWidget) {
+        currentHtmlWidget.finalize();
+        currentHtmlWidget = null;
+      } else if (blockLang === 'svg' && currentSvgWidget) {
+        currentSvgWidget.finalize();
+        currentSvgWidget = null;
+      }
+      blockState = 'text';
+    }
+
+    if (typing.parentNode) typing.remove();
+    textPart.innerHTML = renderMarkdown(fullText);
+    scrollToBottom();
+  } catch (err) {
+    console.error('Chat error:', err);
+    if (typing.parentNode) typing.remove();
+    contentEl.innerHTML = `<div class="widget-error">请求失败: ${escapeHtml(err.message || String(err))}<br><small style="color:var(--text-faint)">请检查服务器是否在运行 (http://localhost:5000)</small></div>`;
+  }
+
+  conversationHistory.push({ role: 'assistant', content: fullText });
+  isStreaming = false;
+  if (userInput.value.trim()) sendBtn.classList.add('active');
+}
+
+function autoResize() {
+  userInput.style.height = 'auto';
+  userInput.style.height = Math.min(userInput.scrollHeight, 200) + 'px';
+  sendBtn.classList.toggle('active', userInput.value.trim().length > 0);
+}
+
+userInput.addEventListener('input', autoResize);
+userInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+sendBtn.addEventListener('click', sendMessage);
+
+async function loadModels() {
+  try {
+    const res = await fetch('/api/models');
+    const data = await res.json();
+    modelSelect.innerHTML = '';
+    const unique = [...new Set(data.available || [data.current])];
+    unique.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = m;
+      if (m === data.current) opt.selected = true;
+      modelSelect.appendChild(opt);
+    });
+  } catch { modelSelect.innerHTML = '<option>默认模型</option>'; }
+}
+
+const themeToggle = document.getElementById('themeToggle');
+const savedTheme = localStorage.getItem('claude-chat-theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+
+themeToggle.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('claude-chat-theme', next);
+});
+
+loadModels();
+userInput.focus();
+</script>
+</body>
+</html>
