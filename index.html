@@ -195,6 +195,7 @@ body{
 .message.assistant .content a{color:var(--color-blue);text-decoration:none}
 .message.assistant .content a:hover{text-decoration:underline}
 .message.assistant .content img{max-width:100%;border-radius:var(--radius)}
+.message.assistant .content .text-part{margin-bottom:4px}
 /* KaTeX 数学公式主题适配 */
 .message.assistant .content .katex-display{margin:14px 0;overflow-x:auto}
 .message.assistant .content .katex{color:var(--text-primary);font-size:1em}
@@ -818,10 +819,16 @@ async function sendMessage() {
 
   const assistantEl = addMessage('assistant', '');
   const contentEl = assistantEl.querySelector('.content');
-  const textPart = document.createElement('div');
-  textPart.className = 'text-part';
-  contentEl.appendChild(textPart);
-  let fullText = '';
+
+  // 支持文字/图示交叉排列：维护当前活跃的 textPart
+  function createTextPart() {
+    const tp = document.createElement('div');
+    tp.className = 'text-part';
+    contentEl.appendChild(tp);
+    return tp;
+  }
+  let textPart = createTextPart();
+  let currentSegment = ''; // 当前正在累积的文字段
 
   const typing = document.createElement('div');
   typing.className = 'typing-indicator';
@@ -837,12 +844,12 @@ async function sendMessage() {
   let currentSvgWidget = null;
 
   function detectBlockStart(chunk) {
-    const lookback = fullText.substring(Math.max(0, fullText.length - 30));
+    const lookback = currentSegment.substring(Math.max(0, currentSegment.length - 30));
     for (const lang of ['mermaid', 'html', 'svg']) {
       const marker = '```' + lang;
       const idx = lookback.lastIndexOf(marker);
       if (idx !== -1) {
-        const absIdx = fullText.length - lookback.length + idx;
+        const absIdx = currentSegment.length - lookback.length + idx;
         return { lang, absIdx };
       }
     }
@@ -852,7 +859,7 @@ async function sendMessage() {
   function processNewText(newChunk) {
     // 过滤掉 [VISUALIZE: yes/no] 标签，不显示给用户
     newChunk = newChunk.replace(/^\[VISUALIZE:\s*(yes|no)\]\s*\n?/m, '');
-    fullText += newChunk;
+    currentSegment += newChunk;
 
     if (blockState === 'text') {
       const hit = detectBlockStart(newChunk);
@@ -862,25 +869,29 @@ async function sendMessage() {
         blockContent = '';
         tickCount = 0;
 
-        const before = fullText.substring(0, hit.absIdx);
+        // 冻结当前文字段：渲染到当前 textPart
+        const before = currentSegment.substring(0, hit.absIdx);
         if (typing.parentNode) typing.remove();
         textPart.innerHTML = renderMarkdown(before);
 
+        // 插入 widget 容器
         if (blockLang === 'mermaid') {
           currentChart = createMermaidContainer(contentEl);
-          scrollToBottom();
         } else if (blockLang === 'html') {
           currentHtmlWidget = new LiveHtmlWidget(contentEl);
-          scrollToBottom();
         } else if (blockLang === 'svg') {
           currentSvgWidget = new LiveSvgWidget(contentEl);
-          scrollToBottom();
         }
+
+        // 创建新的 textPart 用于后续文字（实现交叉排列）
+        textPart = createTextPart();
+        currentSegment = ''; // 重置，开始累积新段落
+        scrollToBottom();
         return;
       }
 
       if (typing.parentNode) typing.remove();
-      textPart.innerHTML = renderMarkdown(fullText);
+      textPart.innerHTML = renderMarkdown(currentSegment);
       scrollToBottom();
       return;
     }
@@ -907,6 +918,10 @@ async function sendMessage() {
           }
           blockContent = '';
           blockLang = '';
+
+          // 代码块结束后，创建新 textPart 用于后续文字
+          textPart = createTextPart();
+          currentSegment = '';
           continue;
         }
         if (tickCount > 0) {
@@ -981,7 +996,7 @@ async function sendMessage() {
     }
 
     if (typing.parentNode) typing.remove();
-    textPart.innerHTML = renderMarkdown(fullText);
+    textPart.innerHTML = renderMarkdown(currentSegment);
     scrollToBottom();
   } catch (err) {
     console.error('Chat error:', err);
@@ -989,7 +1004,7 @@ async function sendMessage() {
     contentEl.innerHTML = `<div class="widget-error">请求失败: ${escapeHtml(err.message || String(err))}<br><small style="color:var(--text-faint)">请检查服务器是否在运行 (http://localhost:5000)</small></div>`;
   }
 
-  conversationHistory.push({ role: 'assistant', content: fullText });
+  conversationHistory.push({ role: 'assistant', content: currentSegment });
   isStreaming = false;
   if (userInput.value.trim()) sendBtn.classList.add('active');
 }

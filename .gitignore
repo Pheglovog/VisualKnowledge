@@ -1,6 +1,9 @@
 # API keys / secrets
 start.bat
 
+# Node.js
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]

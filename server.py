@@ -131,9 +131,15 @@ def chat():
 if __name__ == '__main__':
     import sys
     import io
+    import argparse
+
+    parser = argparse.ArgumentParser(description='VisualKnowledge Server')
+    parser.add_argument('--port', type=int, default=5000, help='Port to listen on (default: 5000)')
+    args = parser.parse_args()
+
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     print(f"🚀 Claude Chat 启动中...")
     print(f"   API: {API_BASE_URL}")
     print(f"   模型: {MODEL}")
-    print(f"   地址: http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print(f"   地址: http://localhost:{args.port}")
+    app.run(host='0.0.0.0', port=args.port, debug=True)
