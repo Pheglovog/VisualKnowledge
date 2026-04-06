@@ -15,9 +15,9 @@ SKILLS = {
         "description": "详细展示 Q/K/V 计算过程"
     },
     "ring_graph": {
-        "name": "环形/链表可视化",
+        "name": "环形/链表可视化（JS动态计算）",
         "trigger": ["环形", "链表", "环", "cycle", "ring", "floyd", "判圈", "龟兔赛跑", "快慢指针", "循环链表", "环形链表", "约瑟夫"],
-        "description": "展示环形链表、Floyd判圈算法、循环队列等需要闭合回路的图"
+        "description": "用 JS 动态计算坐标画环形链表/Floyd判圈/循环队列，绝不手算坐标"
     },
     "generic_pipeline": {
         "name": "通用流程图",
@@ -162,60 +162,28 @@ def get_skill_prompt():
 
 ---
 
-### ⚠️ 环形/链表可视化规范（ring_graph）
+### ⚠️ 环形/链表可视化规范（ring_graph）— 矩形环 + JS 动态计算
 
-环形链表、判圈算法、循环队列等**必须用内嵌 SVG**，不要用 flex+文字箭头，因为环路无法用 → ↓ 闭合。
+**核心原则：用矩形画环，不用圆形！** 环形结构画成矩形路径（上排→右下→下排←左上闭合），坐标由 JS 自动计算。
 
-#### 核心原则
-1. **节点位置用三角函数计算**：把环上的节点均匀放在圆上，用 `(cx + r*cos(θ), cy + r*sin(θ))` 定位
-2. **非环节点排成一条直线**（tail 部分水平排列），最后一个非环节点指向环节点
-3. **箭头用 SVG `<line>` + `<marker>` 箭头标记**
-4. **整个 SVG 放在一个 HTML 容器 `<div>` 中**，配合标题和图例
+#### 为什么用矩形？
+1. 矩形只需要水平/垂直线，无需三角函数，坐标100%正确
+2. 圆形需要 sin/cos 计算角度，AI 极易算错导致节点错位、箭头断开
+3. 矩形环更清晰：上排→右转→下排→左转→回到入口，首尾相连就是环
 
-#### 布局方法
+#### 矩形环布局原理
 ```
-tail 节点（水平直线）        环上的节点（圆形排列）
-  3 → 2 → 1 → 5 ← 4
-              ↓       ↑
-              6 → 7 → 8
+[tail...] → [5] → [4] → [6]      ← 上排（环的前半，从左到右）
+             ↑              ↓
+             [8] ← [7]            ← 下排（环的后半，从右到左，最终连回入口）
 ```
 
-- tail 部分：从左到右水平排列，间距固定
-- 环部分：用圆排列，节点均匀分布在圆周上
-- 连线：SVG `<line>` 元素 + 箭头 marker
+- 上排 = ringNodes 的前半部分，从左到右，用 → 连接
+- 下排 = ringNodes 的后半部分，从右到左，用 ← 连接
+- 右侧 = 上排末尾 ↓ 连到下排首个
+- 左侧 = 下排末尾 ↑ 连回入口（环闭合！）
 
-#### 节点和箭头样式
-```css
-/* 节点 */
-.node {
-  fill: #1e293b;           /* 深色填充 */
-  stroke: #64748b;         /* 边框 */
-  stroke-width: 2;
-  r: 22;                   /* 半径 */
-}
-.node-label {
-  fill: #f1f5f9;           /* 白色文字 */
-  font-size: 14px;
-  font-weight: bold;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-/* 箭头连线 */
-.edge {
-  stroke: #94a3b8;
-  stroke-width: 2;
-  marker-end: url(#arrow);
-}
-
-/* 特殊高亮 */
-.node-entry { fill: #16a34a20; stroke: #16a34a; stroke-width: 3; }  /* 环入口 - 绿 */
-.node-meet  { fill: #e11d4820; stroke: #e11d48; stroke-width: 3; }  /* 相遇点 - 红 */
-.node-slow  { stroke: #d97706; stroke-width: 2.5; stroke-dasharray: 5,3; } /* 慢指针 - 橙 */
-.node-fast  { stroke: #2563eb; stroke-width: 2.5; stroke-dasharray: 8,4; } /* 快指针 - 蓝 */
-```
-
-#### 高质量示例：Floyd 判圈算法
+#### 必须照搬的 JS 模板（直接复制，只改数据部分）
 
 ```html
 <div style="max-width:860px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:inherit;background:transparent;padding:20px">
@@ -228,75 +196,167 @@ tail 节点（水平直线）        环上的节点（圆形排列）
 <h3 style="text-align:center;font-size:16px;margin-bottom:4px">Floyd 判圈算法 — 龟兔赛跑</h3>
 <p style="text-align:center;font-size:12px;opacity:0.5;margin-bottom:16px">slow 走 1 步 · fast 走 2 步 · 必在环内相遇</p>
 
-<svg viewBox="0 0 700 380" style="width:100%;max-width:700px;margin:0 auto;display:block">
-<defs>
-  <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-    <path d="M0,0 L8,3 L0,6" fill="#94a3b8"/>
-  </marker>
-  <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-    <path d="M0,0 L8,3 L0,6" fill="#16a34a"/>
-  </marker>
-</defs>
+<div id="ring-container"></div>
 
-<!-- Tail 部分 (非环节点) -->
-<circle cx="80" cy="80" r="22" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
-<text x="80" y="80" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">3</text>
-<line x1="102" y1="80" x2="148" y2="80" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+<script>
+(function() {
+  // ===== 只需修改这里的数据 =====
+  var tailNodes = [3, 2, 1];        // tail 部分（从左到右）
+  var ringNodes = [5, 4, 6, 7, 8];  // 环部分（顺序排列，第一个是入口）
+  var entryIdx = 0;                  // 环入口在 ringNodes 中的下标
+  var meetIdx = 3;                   // 相遇点下标（-1=无）
+  // ==============================
 
-<circle cx="170" cy="80" r="22" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
-<text x="170" y="80" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">2</text>
-<line x1="192" y1="80" x2="238" y2="80" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  var NR = 24;           // 节点半径
+  var GAP = 90;          // 同行节点间距
+  var V_GAP = 110;       // 上下排间距
+  var PAD = 50;          // 左右边距
+  var ARROW_PAD = 6;     // 箭头离节点边缘的间隙
 
-<circle cx="260" cy="80" r="22" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
-<text x="260" y="80" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">1</text>
-<line x1="282" y1="80" x2="418" y2="240" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  var ringLen = ringNodes.length;
+  var tailLen = tailNodes.length;
 
-<!-- Tail → Entry 标注 -->
-<text x="360" y="140" fill="#16a34a" font-size="11" text-anchor="middle">a 步（到入口）</text>
+  // 将环节点分成上排和下排
+  var topCount = Math.ceil(ringLen / 2);
+  var botCount = ringLen - topCount;
 
-<!-- 环上的节点 (圆形排列，圆心 440,260 半径 100) -->
-<!-- 5: θ=270° → (440, 160) -->
-<circle cx="440" cy="160" r="22" fill="#16a34a20" stroke="#16a34a" stroke-width="3"/>
-<text x="440" y="160" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">5</text>
-<text x="440" y="130" fill="#16a34a" font-size="10" text-anchor="middle">入口</text>
+  // 计算上排起始 X（让上排在 tail 右侧）
+  var tailEndX = tailLen > 0 ? PAD + (tailLen - 1) * GAP : PAD - GAP;
+  var ringStartX = tailEndX + GAP;
+  var topY = PAD + NR;
+  var botY = topY + V_GAP;
 
-<!-- 4: θ=342° → (535, 229) -->
-<circle cx="535" cy="229" r="22" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
-<text x="535" y="229" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">4</text>
+  // 所有节点坐标（统一索引）
+  var nodes = []; // { x, y, val, role }
 
-<!-- 6: θ=54° → (499, 341) -->
-<circle cx="499" cy="341" r="22" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
-<text x="499" y="341" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">6</text>
+  // Tail 节点
+  for (var i = 0; i < tailLen; i++) {
+    nodes.push({ x: PAD + i * GAP, y: topY, val: tailNodes[i], role: 'tail' });
+  }
 
-<!-- 7: θ=126° → (381, 341) -->
-<circle cx="381" cy="341" r="22" fill="#e11d4820" stroke="#e11d48" stroke-width="3"/>
-<text x="381" y="341" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">7</text>
-<text x="381" y="374" fill="#e11d48" font-size="10" text-anchor="middle">相遇点</text>
+  // 上排环节点
+  var topStart = nodes.length;
+  for (var i = 0; i < topCount; i++) {
+    var ri = i;
+    nodes.push({ x: ringStartX + i * GAP, y: topY, val: ringNodes[ri], role: 'ring', ringIdx: ri });
+  }
 
-<!-- 8: θ=198° → (345, 229) -->
-<circle cx="345" cy="229" r="22" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
-<text x="345" y="229" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">8</text>
+  // 下排环节点（从右到左排列，所以 X 从上排末尾开始递减）
+  var botStart = nodes.length;
+  for (var i = 0; i < botCount; i++) {
+    var ri = topCount + i;
+    nodes.push({ x: ringStartX + (topCount - 1) * GAP - i * GAP, y: botY, val: ringNodes[ri], role: 'ring', ringIdx: ri });
+  }
 
-<!-- 环上的箭头连线 (5→4→6→7→8→5) -->
-<line x1="461" y1="152" x2="514" y2="219" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
-<line x1="555" y1="238" x2="518" y2="328" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
-<line x1="489" y1="357" x2="395" y2="353" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
-<line x1="363" y1="333" x2="328" y2="241" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
-<line x1="348" y1="211" x2="418" y2="171" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  // SVG 尺寸
+  var allX = nodes.map(function(n){ return n.x; });
+  var W = Math.max.apply(null, allX) + PAD + NR + 10;
+  var H = botY + NR + PAD;
 
-<!-- 距离标注 -->
-<text x="388" y="310" fill="#94a3b8" font-size="10" text-anchor="middle">b</text>
-<text x="330" y="276" fill="#94a3b8" font-size="10" text-anchor="middle">c</text>
+  // 边缘点计算（从圆心出发，沿方向偏移半径）
+  function edgePt(x1, y1, x2, y2, r) {
+    var dx = x2 - x1, dy = y2 - y1;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1) return { x: x1, y: y1 };
+    return { x: x1 + dx / len * r, y: y1 + dy / len * r };
+  }
 
-<!-- 图例说明 -->
-<text x="440" y="260" fill="#94a3b8" font-size="11" text-anchor="middle" font-style="italic">环长 c = b + 剩余</text>
+  // 画箭头连线
+  function line(x1, y1, x2, y2, color, marker) {
+    var p1 = edgePt(x1, y1, x2, y2, NR + ARROW_PAD);
+    var p2 = edgePt(x2, y2, x1, y1, NR + ARROW_PAD);
+    return '<line x1="' + p1.x.toFixed(1) + '" y1="' + p1.y.toFixed(1) +
+           '" x2="' + p2.x.toFixed(1) + '" y2="' + p2.y.toFixed(1) +
+           '" stroke="' + color + '" stroke-width="2" marker-end="url(#' + marker + ')"/>';
+  }
 
-<!-- 指针 -->
-<text x="100" y="110" fill="#d97706" font-size="11" font-weight="bold">🐢 slow</text>
-<text x="100" y="124" fill="#2563eb" font-size="11" font-weight="bold">🐇 fast</text>
-<line x1="140" y1="107" x2="170" y2="90" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,2"/>
-<line x1="140" y1="120" x2="170" y2="90" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="6,3"/>
-</svg>
+  // 画节点
+  function circle(n, fill, stroke, sw) {
+    var s = '<circle cx="' + n.x.toFixed(1) + '" cy="' + n.y.toFixed(1) + '" r="' + NR +
+            '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"/>';
+    s += '<text x="' + n.x.toFixed(1) + '" y="' + n.y.toFixed(1) +
+         '" fill="#f1f5f9" font-size="14" font-weight="bold" text-anchor="middle" dominant-baseline="central">' + n.val + '</text>';
+    return s;
+  }
+
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:' + W + 'px;margin:0 auto;display:block">';
+  svg += '<defs>';
+  svg += '<marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#94a3b8"/></marker>';
+  svg += '<marker id="arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#16a34a"/></marker>';
+  svg += '<marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#e11d48"/></marker>';
+  svg += '</defs>';
+
+  // ---- Step 1: 画连线（先画线，节点覆盖在上面）----
+
+  // Tail → Tail 箭头
+  for (var i = 0; i < tailLen - 1; i++) {
+    svg += line(nodes[i].x, nodes[i].y, nodes[i+1].x, nodes[i+1].y, '#94a3b8', 'arr');
+  }
+
+  // Tail 末尾 → 环入口（上排第一个）
+  if (tailLen > 0) {
+    svg += line(nodes[tailLen-1].x, nodes[tailLen-1].y, nodes[topStart].x, nodes[topStart].y, '#16a34a', 'arr-g');
+    // "a 步" 标注
+    var mx = (nodes[tailLen-1].x + nodes[topStart].x) / 2;
+    var my = nodes[topStart].y - NR - 10;
+    svg += '<text x="' + mx.toFixed(0) + '" y="' + my.toFixed(0) + '" fill="#16a34a" font-size="11" text-anchor="middle">a 步</text>';
+  }
+
+  // 上排 → 箭头（从左到右）
+  for (var i = 0; i < topCount - 1; i++) {
+    svg += line(nodes[topStart+i].x, nodes[topStart+i].y, nodes[topStart+i+1].x, nodes[topStart+i+1].y, '#94a3b8', 'arr');
+  }
+
+  // 上排末尾 ↓ 下排首个（右侧垂直箭头）
+  if (botCount > 0) {
+    svg += line(nodes[topStart+topCount-1].x, nodes[topStart+topCount-1].y,
+                nodes[botStart].x, nodes[botStart].y, '#94a3b8', 'arr');
+  }
+
+  // 下排 ← 箭头（从右到左）
+  for (var i = 0; i < botCount - 1; i++) {
+    svg += line(nodes[botStart+i].x, nodes[botStart+i].y, nodes[botStart+i+1].x, nodes[botStart+i+1].y, '#94a3b8', 'arr');
+  }
+
+  // 下排末尾 ↑ 回到环入口（左侧闭合箭头！这是环的关键！）
+  var closeFrom = nodes[botStart + botCount - 1];
+  var closeTo = nodes[topStart]; // 入口 = 上排第一个
+  svg += line(closeFrom.x, closeFrom.y, closeTo.x, closeTo.y, '#16a34a', 'arr-g');
+
+  // ---- Step 2: 画节点（覆盖在连线上面）----
+
+  // Tail 节点
+  for (var i = 0; i < tailLen; i++) {
+    svg += circle(nodes[i], '#1e293b', '#64748b', 2);
+  }
+
+  // 环节点
+  for (var i = 0; i < ringLen; i++) {
+    var n = nodes[topStart + i];
+    var fill = '#1e293b', stroke = '#64748b', sw = 2, label = '';
+    if (i === entryIdx) {
+      fill = '#16a34a20'; stroke = '#16a34a'; sw = 3; label = '入口';
+    } else if (i === meetIdx) {
+      fill = '#e11d4820'; stroke = '#e11d48'; sw = 3; label = '相遇点';
+    }
+    svg += circle(n, fill, stroke, sw);
+    if (label) {
+      var ly = n.y < (topY + botY) / 2 ? n.y - NR - 10 : n.y + NR + 14;
+      svg += '<text x="' + n.x.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="' + stroke + '" font-size="10" text-anchor="middle">' + label + '</text>';
+    }
+  }
+
+  // 起点指针标注
+  if (tailLen > 0) {
+    var p = nodes[0];
+    svg += '<text x="' + p.x.toFixed(0) + '" y="' + (p.y + NR + 16).toFixed(0) + '" fill="#d97706" font-size="11" font-weight="bold" text-anchor="middle">🐢 slow</text>';
+    svg += '<text x="' + p.x.toFixed(0) + '" y="' + (p.y + NR + 30).toFixed(0) + '" fill="#2563eb" font-size="11" font-weight="bold" text-anchor="middle">🐇 fast</text>';
+  }
+
+  svg += '</svg>';
+  document.getElementById('ring-container').innerHTML = svg;
+})();
+</script>
 
 <div class="ring-legend">
   <span><span class="ring-dot" style="background:#16a34a"></span> 环入口</span>
@@ -312,14 +372,15 @@ tail 节点（水平直线）        环上的节点（圆形排列）
 </div>
 ```
 
-#### 环形图绘制要点（必读）
-1. **先算坐标再画**：确定圆心 `(cx, cy)` 和半径 `r`，用 `θ = i × 360°/n` 计算每个节点位置
-2. **箭头要指向圆心方向偏移**：`marker-end` 自动朝向，但起点要从节点边缘出发（不是圆心），终点停在目标节点边缘
-3. **Tail 节点水平排列**，最后一个 tail 节点画一条指向环节点的箭头线
-4. **闭合箭头**：最后一个环节点必须画箭头回到第一个环节点（这是关键！）
-5. **节点数量 ≤ 8**：太多节点看不清，适当合并或简化
-6. **用 `<text>` 标注距离**（a, b, c）和关键位置（入口、相遇点）
-7. **viewBox 要足够大**：确保所有节点和标注都在可视区域内
+#### 使用规则（必读）
+1. **直接复制上面的模板**，只修改 `tailNodes`、`ringNodes`、`entryIdx`、`meetIdx` 这4个数据变量
+2. **绝不手写 SVG 坐标** — JS 自动计算所有矩形布局位置
+3. **绝不手算三角函数** — 矩形布局只需要水平/垂直间距
+4. 环的闭合由代码自动处理：下排末尾 ↑ 连回上排入口（入口 = `ringNodes[entryIdx]`）
+5. `entryIdx` = 环入口在 `ringNodes` 中的下标，`meetIdx` = 相遇点下标（无则设 -1）
+6. 可根据具体算法修改标题、副标题、图例和底部公式
+7. 节点数量建议 ≤ 8，太多可适当合并
+8. **分步确认流程**：① 确认 tail→entry 连线正确 ② 确认上排→右转→下排方向正确 ③ 确认下排末尾连回入口形成闭环
 
 ### 使用规则
 1. 涉及架构/流程/数据变换/神经网络结构/算法步骤 → **必须用 ```html**
