@@ -5,7 +5,7 @@
  * 切换时更新 document.documentElement.dataset.theme。
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'claude-chat-theme';
 
@@ -23,9 +23,9 @@ export function useTheme() {
   }, [theme]);
 
   // 初始化：设置 DOM 主题
-  useState(() => {
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-  });
+  }, []);
 
   return { theme, toggleTheme };
 }

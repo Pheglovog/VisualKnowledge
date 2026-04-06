@@ -5,7 +5,7 @@
  * 管理对话消息、流式状态、主题、模型选择、全屏 Widget。
  */
 
-import { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer } from 'react';
 
 // ====== Action Types ======
 
@@ -134,10 +134,10 @@ export const AppContext = createContext(null);
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  return (
-    AppContext.Provider value={{ state, dispatch }}>
-      {children}
-    </AppContext.Provider>
+  return React.createElement(
+    AppContext.Provider,
+    { value: { state, dispatch } },
+    children
   );
 }
 

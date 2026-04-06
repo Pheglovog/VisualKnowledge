@@ -7,10 +7,11 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.jsx';
+import { AppProvider } from './context/AppContext.jsx';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
   throw new Error('Root element #root not found in DOM');
 }
 
-createRoot(rootEl).render(React.createElement(App));
+createRoot(rootEl).render(React.createElement(AppProvider, null, React.createElement(App)));
