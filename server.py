@@ -1,9 +1,13 @@
 import json
+import mimetypes
 import os
 import sys
 import logging
 from flask import Flask, request, Response, jsonify, send_from_directory
 from anthropic import Anthropic
+
+# Ensure .jsx files are served with correct JS MIME type for ES modules
+mimetypes.add_type('application/javascript', '.jsx')
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'skills'))
 from visualize import get_skill_prompt
