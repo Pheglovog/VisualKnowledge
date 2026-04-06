@@ -51,13 +51,23 @@ graph TD
 - 最后给出总结要点"""
 
 
+FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
+
 @app.route('/')
 def index():
-    resp = send_from_directory(os.path.join(BASE_DIR, 'frontend'), 'index.html')
+    resp = send_from_directory(FRONTEND_DIR, 'index.html')
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
     return resp
+
+@app.route('/<path:path>')
+def static_files(path):
+    """Serve all static files (CSS, JS) from the frontend directory."""
+    file_path = os.path.join(FRONTEND_DIR, path)
+    if os.path.isfile(file_path):
+        return send_from_directory(FRONTEND_DIR, path)
+    return ('Not found', 404)
 
 
 @app.route('/api/models', methods=['GET'])
