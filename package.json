@@ -1,6 +1,6 @@
 {
     "name": "visualknowledge",
-    "version": "0.1.2",
+    "version": "0.2.1",
     "description": "Interactive AI Chat with Visualization - one-click launch via npx",
     "bin": {
         "visualknowledge": "./bin/visualknowledge.js"

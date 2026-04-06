@@ -76,13 +76,15 @@ def static_files(path):
 
 @app.route('/api/models', methods=['GET'])
 def get_models():
+    all_models = list(dict.fromkeys([
+        MODEL,
+        os.environ.get('ANTHROPIC_DEFAULT_SONNET_MODEL', ''),
+        os.environ.get('ANTHROPIC_DEFAULT_OPUS_MODEL', ''),
+        os.environ.get('ANTHROPIC_DEFAULT_HAIKU_MODEL', ''),
+    ]))
     models = {
         'current': MODEL,
-        'available': [
-            MODEL,
-            os.environ.get('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'GLM-4.5-air'),
-            os.environ.get('ANTHROPIC_DEFAULT_OPUS_MODEL', 'GLM-5.1'),
-        ]
+        'available': [m for m in all_models if m],
     }
     return jsonify(models)
 

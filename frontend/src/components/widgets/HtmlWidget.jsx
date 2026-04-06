@@ -9,52 +9,70 @@ import { html } from 'htm/react';
 import { useState, useEffect, useRef } from 'react';
 import { WidgetContainer } from './WidgetContainer.jsx';
 
+const IFRAME_TIMEOUT_MS = 10000;
+
 export function HtmlWidget({ html: htmlContent, onFullscreen }) {
   const iframeRef = useRef(null);
-  const [iframeReady, setIframeReady] = useState(false);
   const [status, setStatus] = useState('loading');
+  const timerRef = useRef(null);
+  const stableContentRef = useRef('');
 
-  // 初始化 iframe
+  // 检测内容是否稳定（连续相同内容说明流结束了）
   useEffect(() => {
-    setIframeReady(false);
-    setStatus('loading');
-    if (iframeRef.current) {
-      iframeRef.current.src = 'about:blank';
+    if (!htmlContent) return;
+
+    // 内容变化时重置状态
+    if (htmlContent !== stableContentRef.current) {
+      setStatus('loading');
+      if (timerRef.current) clearTimeout(timerRef.current);
     }
-  }, []);
 
-  // iframe load 后写入内容
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    const handler = () => {
-      setIframeReady(true);
-      _writeHtml(iframe, htmlContent);
-      setStatus('done');
-
-      // 调整高度
-      try {
-        const doc = iframe.contentDocument;
-        if (doc && doc.body) {
-          const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 300);
-          iframe.style.height = Math.min(h + 20, 1200) + 'px';
-        }
-      } catch (e) {}
-    };
-
-    iframe.addEventListener('load', handler);
-    return () => iframe.removeEventListener('load', handler);
+    stableContentRef.current = htmlContent;
   }, [htmlContent]);
 
-  // 追踪内容变化，定时重新写入（支持流式更新）
+  // iframe 初始化 + 写入内容
   useEffect(() => {
-    if (!iframeReady || !htmlContent) return;
-    const timer = setTimeout(() => {
-      _writeHtml(iframeRef.current, htmlContent);
-    }, 80);
-    return () => clearTimeout(timer);
-  }, [htmlContent, iframeReady]);
+    const iframe = iframeRef.current;
+    if (!iframe || !htmlContent) return;
+
+    let settled = false;
+
+    const write = () => {
+      _writeHtml(iframe, htmlContent);
+      setStatus('done');
+      settled = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+
+    // 首次加载或 src 变化时等待 load 事件
+    const handler = () => {
+      write();
+    };
+
+    // 超时保护：即使 load 事件没触发也强制写入
+    timerRef.current = setTimeout(() => {
+      if (!settled) {
+        console.warn('[HtmlWidget] iframe load timeout, forcing write');
+        write();
+      }
+    }, IFRAME_TIMEOUT_MS);
+
+    iframe.addEventListener('load', handler);
+
+    // 如果 iframe 已经加载完成，直接写入
+    try {
+      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+        write();
+      }
+    } catch (_) {
+      // cross-origin or not ready yet, wait for load event
+    }
+
+    return () => {
+      iframe.removeEventListener('load', handler);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [htmlContent]);
 
   const handleFullscreen = () => {
     if (htmlContent && onFullscreen) {
@@ -85,5 +103,13 @@ function _writeHtml(iframe, content) {
     doc.open();
     doc.write(content);
     doc.close();
-  } catch (e) {}
+
+    // 调整高度
+    try {
+      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 300);
+      iframe.style.height = Math.min(h + 20, 1200) + 'px';
+    } catch (_) {}
+  } catch (e) {
+    console.warn('[HtmlWidget] write failed:', e);
+  }
 }

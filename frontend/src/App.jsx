@@ -5,6 +5,7 @@
  * 顶层聚合所有 Hooks，将数据通过 props 分发给子组件。
  */
 
+import React from 'react';
 import { html } from 'htm/react';
 import { useAppState, ActionTypes } from './context/AppContext.jsx';
 import { TopBar } from './components/TopBar.jsx';

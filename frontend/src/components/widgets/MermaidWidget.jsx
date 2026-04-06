@@ -6,24 +6,37 @@
  */
 
 import { html } from 'htm/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { WidgetContainer } from './WidgetContainer.jsx';
 import { renderMermaid, getChartType } from '../../lib/mermaidRenderer.js';
+
+const RENDER_TIMEOUT_MS = 15000;
 
 export function MermaidWidget({ code, onZoom }) {
   const [status, setStatus] = useState('loading'); // 'loading' | 'done' | 'error'
   const [svgContent, setSvgContent] = useState('');
   const [error, setError] = useState(null);
   const [chartType, setChartType] = useState('图表');
+  const timerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     setStatus('loading');
     setError(null);
+    setSvgContent('');
     setChartType(getChartType(code));
+
+    // 超时保护
+    timerRef.current = setTimeout(() => {
+      if (!cancelled) {
+        setStatus('error');
+        setError('渲染超时（' + (RENDER_TIMEOUT_MS / 1000) + 's），可能是图表过于复杂');
+      }
+    }, RENDER_TIMEOUT_MS);
 
     renderMermaid(code).then(result => {
       if (cancelled) return;
+      if (timerRef.current) clearTimeout(timerRef.current);
       if (result.error) {
         setStatus('error');
         setError(result.error);
@@ -31,9 +44,18 @@ export function MermaidWidget({ code, onZoom }) {
         setStatus('done');
         setSvgContent(result.svg);
       }
+    }).catch(err => {
+      if (cancelled) return;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      console.error('[MermaidWidget] Render failed:', err);
+      setStatus('error');
+      setError(err.message || String(err));
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [code]);
 
   const handleZoom = () => {

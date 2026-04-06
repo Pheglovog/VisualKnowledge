@@ -14,32 +14,23 @@ import { StreamProcessor } from '../lib/streamProcessor.js';
 export function useChat() {
   const { state, dispatch } = useAppState();
   const processorRef = useRef(null);
-  const [localMessages, setLocalMessages] = useState([]);
-  const [localStreaming, setLocalStreaming] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  // 从 context 读取消息（context 在流式过程中会增量更新）
+  const messages = state.messages;
 
   /**
    * 发送消息并启动流式接收
    */
   const sendMessage = useCallback(async (text) => {
-    if (!text.trim() || localStreaming) return;
+    if (!text.trim() || isStreaming) return;
 
-    // 1. 添加用户消息
-    const userMsg = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      role: 'user',
-      content: text,
-      segments: [{ id: `seg_txt_user_${Date.now()}`, type: 'text', content: text, renderedContent: null, renderStatus: 'done', renderError: null }],
-      status: 'complete',
-      error: null,
-      timestamp: Date.now(),
-    };
+    // 1. 添加用户消息到 context
     dispatch({ type: ActionTypes.ADD_USER_MESSAGE, content: text });
-    setLocalMessages(prev => [...prev, userMsg]);
 
     // 2. 创建 AI 消息占位
     const assistantId = `msg_ast_${Date.now()}`;
     dispatch({ type: ActionTypes.START_ASSISTANT_MESSAGE, messageId: assistantId });
-    setLocalStreaming(true);
+    setIsStreaming(true);
 
     // 3. 初始化 StreamProcessor
     const processor = new StreamProcessor();
@@ -57,13 +48,13 @@ export function useChat() {
       dispatch({
         type: ActionTypes.FINALIZE_SEGMENTS,
         messageId: assistantId,
-        segments: JSON.parse(JSON.stringify(segments)), // deep clone for React re-render
+        segments: JSON.parse(JSON.stringify(segments)),
       });
     };
 
     try {
-      // 5. 发起 SSE 请求
-      const conversationHistory = [...localMessages, userMsg].map(m => ({
+      // 5. 构建对话历史（从 context 已有消息 + 当前用户消息）
+      const existingMsgs = state.messages.map(m => ({
         role: m.role,
         content: m.content,
       }));
@@ -72,7 +63,7 @@ export function useChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: conversationHistory,
+          messages: [...existingMsgs, { role: 'user', content: text }],
           model: state.currentModel || undefined,
         }),
       });
@@ -109,7 +100,7 @@ export function useChat() {
               messageId: assistantId,
               error: event.message || 'Unknown error',
             });
-            setLocalStreaming(false);
+            setIsStreaming(false);
             return;
           }
         }
@@ -124,21 +115,6 @@ export function useChat() {
       });
       dispatch({ type: 'COMPLETE_STREAM', messageId: assistantId });
 
-      // 更新本地 messages 列表
-      const finalText = finalSegments
-        .filter(s => s.type === 'text')
-        .map(s => s.content)
-        .join('');
-      setLocalMessages(prev => [...prev, {
-        id: assistantId,
-        role: 'assistant',
-        content: finalText,
-        segments: finalSegments,
-        status: 'complete',
-        error: null,
-        timestamp: Date.now(),
-      }]);
-
     } catch (err) {
       console.error('Chat error:', err);
       dispatch({
@@ -148,13 +124,13 @@ export function useChat() {
       });
     }
 
-    setLocalStreaming(false);
+    setIsStreaming(false);
     processorRef.current = null;
-  }, [localStreaming, state.currentModel, localMessages, dispatch]);
+  }, [isStreaming, state.currentModel, state.messages, dispatch]);
 
   return {
-    messages: localMessages,
-    isStreaming: localStreaming,
+    messages,
+    isStreaming,
     sendMessage,
   };
 }
