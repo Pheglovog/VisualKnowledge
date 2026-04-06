@@ -126,6 +126,14 @@ export class StreamProcessor {
     // 返回 segments 的快照，包含当前活跃段
     const result = [...this._segments];
 
+    // 更新活跃的 codeblock segment，将流式缓冲区内容暴露给组件
+    if (this._phase === 'codeblock') {
+      const lastSeg = result[result.length - 1];
+      if (lastSeg && (lastSeg.type === 'mermaid' || lastSeg.type === 'html' || lastSeg.type === 'svg')) {
+        lastSeg.content = this._buffer;
+      }
+    }
+
     // 如果有活跃的文字段且不在 segments 中，追加它
     if (this._phase === 'text' && this._activeText) {
       // 检查是否已有未完成的 text segment（最后一个 segment 可能是待更新的 text）

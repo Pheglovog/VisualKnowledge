@@ -38,7 +38,7 @@ export function HtmlWidget({ html: htmlContent, onFullscreen }) {
       <iframe
         ref=${iframeRef}
         sandbox="allow-scripts allow-same-origin"
-        style=${{ width: '100%', height: '460px', border: 'none', display: 'block' }}
+        style=${{ width: '100%', height: hasContent ? undefined : '0px', border: 'none', display: 'block' }}
       />
     </${WidgetContainer}>
   `;
@@ -52,10 +52,10 @@ function _writeHtml(iframe, content) {
     doc.write(content);
     doc.close();
 
-    // 调整高度
+    // 根据实际内容调整高度，随内容增长逐步扩大
     try {
-      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 300);
-      iframe.style.height = Math.min(h + 20, 1200) + 'px';
+      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 0);
+      iframe.style.height = Math.min(h + 16, 1200) + 'px';
     } catch (_) {}
   } catch (e) {
     console.warn('[HtmlWidget] write failed:', e);
