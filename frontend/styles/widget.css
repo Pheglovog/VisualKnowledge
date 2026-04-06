@@ -23,7 +23,7 @@
 .widget-container .widget-header .btn:hover{border-color:var(--accent);color:var(--accent)}
 .widget-container .widget-body{
   padding:0;display:flex;justify-content:center;overflow:auto;
-  min-height:100px;
+  min-height:0;
 }
 .widget-container .widget-body svg{max-width:100%;height:auto}
 .widget-container .widget-loading{
