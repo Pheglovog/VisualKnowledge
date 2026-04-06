@@ -3,6 +3,7 @@
 'use strict';
 
 const { spawn, exec } = require('child_process');
+const fs = require('fs');
 const net = require('net');
 const os = require('os');
 const path = require('path');
@@ -238,14 +239,37 @@ function openBrowser(url) {
   });
 }
 
+// ─── Claude Code Config Loader ─────────────────────────────────
+function loadClaudeEnv() {
+  const home = process.env.HOME || process.env.USERPROFILE || os.homedir();
+  if (!home) return null;
+
+  const candidates = [
+    path.join(home, '.claude', 'settings.json'),
+  ];
+
+  for (const configPath of candidates) {
+    try {
+      const raw = fs.readFileSync(configPath, 'utf8');
+      const data = JSON.parse(raw);
+      if (data && typeof data.env === 'object' && data.env !== null) {
+        return { env: data.env, source: configPath };
+      }
+    } catch (_) {
+      // File not found or parse error — skip silently
+    }
+  }
+  return null;
+}
+
 // ─── T008: Python Flask Subprocess Launch ────────────────────
-function startServer(pythonCmd, port) {
+function startServer(pythonCmd, port, mergedEnv) {
   const serverDir = path.resolve(__dirname, '..');
 
   const child = spawn(pythonCmd, ['server.py', '--port', String(port)], {
     cwd: serverDir,
     stdio: 'inherit',
-    env: process.env,
+    env: mergedEnv,
     detached: false,
   });
 
@@ -327,6 +351,20 @@ async function main() {
   // Banner
   banner();
 
+  // Load Claude Code config (if available)
+  const claudeConfig = loadClaudeEnv();
+  // Claude config as base defaults, process.env always takes precedence
+  const mergedEnv = { ...(claudeConfig ? claudeConfig.env : {}), ...process.env };
+  if (claudeConfig) {
+    const hasKey = mergedEnv.ANTHROPIC_AUTH_TOKEN || mergedEnv.ANTHROPIC_API_KEY;
+    console.log(`${OK} Claude Code config loaded${hasKey ? '' : ' (no API key found)'}`);
+  } else {
+    const hasKey = process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
+    if (!hasKey) {
+      console.log(`${WARN} No API key found (set ANTHROPIC_API_KEY or install Claude Code)`);
+    }
+  }
+
   // Environment checks (T003-T005)
   checkNodeVersion();
   const pythonCmd = await checkPython();
@@ -349,7 +387,7 @@ async function main() {
 
   // Start Python server (T008)
   console.log('\n  Starting server...');
-  const child = startServer(pythonCmd, actualPort);
+  const child = startServer(pythonCmd, actualPort, mergedEnv);
 
   // Setup graceful shutdown (T016-T018)
   setupShutdownHandlers(child);
